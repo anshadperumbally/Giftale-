@@ -172,7 +172,7 @@
             // ⚠️ WARNING: This is INSECURE. Anyone can steal this token.
             // But it will make your app work in a single file.
             // Replace this with your *actual* token string.
-            token: "skacgsihkZWahk2cODHyNg2gaU3ewEJUOeiUWP5eTiFGrf7fKaXzFAmKAARHJzBhTZiu7Bo93yUPW6dkpB5aHo1GnViEbZ8JMv0C5ZOkqCEvn9eWRBJbTrQb9lkqGHiuAH4BhLMlY7WXcOWUU95foglXD9tUV9OY2ChaPTIrH3F9BVS1bGWM", 
+            token: process.env.SANITY_SECRET_TOKEN, 
                                
             // This is required when using a token, and it ensures
             // you always see fresh data, which fixes your "refresh" problem.
@@ -657,3 +657,4 @@
     </script>
 </body>
 </html>
+
