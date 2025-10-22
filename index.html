@@ -147,7 +147,7 @@
 
 <script src="https://unpkg.com/@sanity/client@latest/dist/sanityClient.umd.js"></script>
 
-<script type="module">
+<script>
     // Array containing Indian States and the remaining Union Territories (Keep this)
     const indianStatesAndUTs = [
         "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
@@ -176,9 +176,7 @@
         useCdn: false 
     };
 
-    // ====================================================================
-    // FIX IS HERE: Correctly initialize the client from the UMD script
-    // ====================================================================
+    // Correctly initialize the client from the UMD script
     const client = window.sanityClient.default(sanityConfig);
 
     let isAppReady = false;
