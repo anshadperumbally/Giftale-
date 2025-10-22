@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Instagram Order Manager</title>
-    <!-- Load Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Inter font -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
@@ -33,7 +31,6 @@
 </head>
 <body class="min-h-screen">
     <div id="app-container" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <!-- Header & View Switch -->
         <header class="bg-white shadow-md rounded-xl p-4 mb-6 sticky top-0 z-10">
             <div class="flex flex-col sm:flex-row justify-between items-center">
                 <h1 class="text-2xl font-bold text-indigo-700 mb-4 sm:mb-0">
@@ -44,7 +41,6 @@
                             onclick="switchView('form')">
                         Customer Form
                     </button>
-                    <!-- New Button for Initial Review -->
                     <button id="show-initial-review-btn" class="px-4 py-2 text-sm font-medium rounded-lg transition" 
                             onclick="switchView('initial-review')">
                         Initial Review
@@ -59,7 +55,6 @@
             <p id="auth-status" class="mt-2 text-xs text-gray-500"></p>
         </header>
 
-        <!-- Loading Indicator -->
         <div id="loading-screen" class="flex justify-center items-center h-64 text-gray-500">
             <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -68,7 +63,6 @@
             Loading Application...
         </div>
 
-        <!-- 1. Customer Order Form View -->
         <section id="form-view" class="view hidden bg-white p-6 rounded-xl shadow-lg max-w-lg mx-auto">
             <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">New Order Submission (Updated Form)</h2>
             <form id="order-form" class="space-y-4">
@@ -76,25 +70,21 @@
                     <label for="name" class="block text-sm font-medium text-gray-700">Customer Name</label>
                     <input type="text" id="name" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
-                <!-- Phone Number -->
                 <div>
                     <label for="phone" class="block text-sm font-medium text-gray-700">Phone Number</label>
                     <input type="tel" id="phone" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
                 
-                <!-- Shipping Address -->
                 <div>
                     <label for="address" class="block text-sm font-medium text-gray-700">Shipping Address (House/Street)</label>
                     <input type="text" id="address" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
 
-                <!-- Alternative Phone Number and Landmark -->
                 <div>
                     <label for="altPhone" class="block text-sm font-medium text-gray-700">Alternative Phone Number and Landmark</label>
                     <input type="text" id="altPhone" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 9876543210 near Main Market">
                 </div>
                 
-                <!-- City, Pincode, State Row -->
                 <div class="grid grid-cols-3 gap-4">
                     <div>
                         <label for="city" class="block text-sm font-medium text-gray-700">City</label>
@@ -104,14 +94,12 @@
                         <label for="pincode" class="block text-sm font-medium text-gray-700">Pincode</label>
                         <input type="text" id="pincode" required class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
-                    <!-- STATE DROPDOWN (MODIFIED) -->
                     <div>
                         <label for="state" class="block text-sm font-medium text-gray-700">State</label>
                         <select id="state" required 
                                 class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500 appearance-none bg-white">
                             <option value="" disabled selected>-- Select State/UT --</option>
-                            <!-- Options populated by JS -->
-                        </select>
+                            </select>
                     </div>
                 </div>
                 <div>
@@ -130,27 +118,22 @@
             <p id="form-message" class="mt-4 text-center hidden"></p>
         </section>
 
-        <!-- 2. Initial Review View (New Submissions) -->
         <section id="initial-review-view" class="view hidden">
             <h2 class="text-2xl font-semibold text-gray-800 mb-6 border-b pb-2">Initial Review: New Submissions</h2>
             <p class="text-gray-600 mb-6">These orders are awaiting initial verification and review before moving to the main pipeline. **You can drag these cards to the 'Pending' column on the Manager Dashboard.**</p>
             <div id="initial-orders-list" class="space-y-4">
-                <!-- Initial orders will be injected here -->
-            </div>
+                </div>
             <p id="initial-empty-message" class="text-center text-gray-500 mt-10 hidden">🎉 No new orders in the queue! Time to review the dashboard.</p>
         </section>
 
-        <!-- 3. Manager Dashboard View (Kanban) -->
         <section id="dashboard-view" class="view hidden">
             <h2 class="text-2xl font-semibold text-gray-800 mb-6">Order Status Board</h2>
             
-            <!-- Download Controls -->
             <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 items-start sm:items-center bg-white p-4 rounded-xl shadow-inner mb-6">
                 <label for="status-select" class="text-sm font-medium text-gray-700 whitespace-nowrap">Export Orders with Status:</label>
                 <select id="status-select" class="block w-full sm:w-auto border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm">
                     <option value="All">All Kanban Orders</option>
-                    <!-- Options populated by JS -->
-                </select>
+                    </select>
                 <button onclick="downloadOrders()" class="w-full sm:w-auto px-4 py-2 text-sm font-semibold rounded-lg text-white bg-green-600 hover:bg-green-700 transition duration-150 shadow-md flex items-center justify-center">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                     Download CSV
@@ -158,11 +141,9 @@
             </div>
             
             <div id="orders-kanban" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <!-- Columns will be injected here -->
-            </div>
+                </div>
         </section>
 
-        <!-- Custom Modal for Confirmation/Error/Drafts -->
         <div id="custom-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden z-50 transition-opacity duration-300 items-center justify-center">
             <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm m-4 transform transition-all duration-300 scale-95">
                 <h3 id="modal-title" class="text-xl font-semibold text-gray-800 mb-3"></h3>
@@ -176,7 +157,6 @@
 
     </div>
 
-    <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -195,19 +175,21 @@
         // ====================================================================
         // START: FIREBASE CONFIGURATION INJECTION
         // --------------------------------------------------------------------
-        // IMPORTANT: The following configuration has been successfully injected 
-        // using the credentials you provided (Project: giftale).
-        
+        //
+        //  THIS IS THE SPOT. 
+        //  PASTE YOUR FIREBASE CONFIGURATION OBJECT HERE.
+        //  THIS IS SAFE TO DO.
+        //
         const userFirebaseConfig = {
-            apiKey: "AIzaSyDvOwo-7PfHNQZQyK9vZdQhDbs810-gOIc",
-            authDomain: "giftale.firebaseapp.com",
-            projectId: "giftale",
-            storageBucket: "giftale.firebasestorage.app",
-            messagingSenderId: "263266463361",
-            appId: "1:263266463361:web:12966b4b1cb7d97cfe2780"
+            apiKey: "YOUR_API_KEY_HERE",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
         
-        // ====================================================================
+        // =================================S===================================
         // END: FIREBASE CONFIGURATION INJECTION
         // ====================================================================
 
@@ -261,7 +243,11 @@
         };
         
         // --- Gemini API Configuration ---
+        
+        // ⚠️ DANGER: DO NOT PASTE YOUR SECRET GEMINI API KEY HERE! ⚠️
+        // This key will be stolen. You must use a Cloud Function.
         const apiKey = ""; 
+        
         const API_MODEL = 'gemini-2.5-flash-preview-09-2025';
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${API_MODEL}:generateContent?key=${apiKey}`;
 
@@ -337,6 +323,13 @@
 
         // Function to call the Gemini API with exponential backoff
         async function generateGeminiContent(systemInstruction, userQuery) {
+            // This function is NOT SAFE to run from the client-side with a real API key.
+            // This entire function should be moved to a Cloud Function.
+            if (!apiKey || apiKey === "") {
+                 showModal("Feature Disabled", "The AI drafting feature is not configured securely. A backend (like a Cloud Function) is required.");
+                 return "AI feature not configured.";
+            }
+
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
                 systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -404,7 +397,7 @@
 
             document.getElementById('custom-modal').classList.add('hidden'); // Close loading modal
 
-            if (draft.startsWith('API call failed') || draft.startsWith('Network error')) {
+            if (draft.startsWith('API call failed') || draft.startsWith('Network error') || draft.startsWith('AI feature not configured')) {
                 showModal("Generation Failed", draft);
             } else {
                 showDraftModal(`Draft for ${order.customerName}`, draft);
@@ -864,7 +857,8 @@
             const draftButton = document.createElement('button');
             draftButton.className = 'mt-3 w-full py-2 text-sm font-semibold rounded-lg text-white bg-pink-500 hover:bg-pink-600 transition duration-150 shadow-md';
             
-            if (IS_OFFLINE_MODE) {
+            // Disable the button if the API key is not set (which it shouldn't be, for safety)
+            if (IS_OFFLINE_MODE || !apiKey || apiKey === "") {
                 draftButton.textContent = 'Draft (Disabled)';
                 draftButton.disabled = true;
                 draftButton.classList.remove('bg-pink-500', 'hover:bg-pink-600');
