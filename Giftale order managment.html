@@ -194,7 +194,11 @@
 
         // Firebase Globals (Provided by Canvas Environment)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        // Fallback configuration if the environment variable is not injected (to prevent crash)
+        const DUMMY_FIREBASE_CONFIG = { apiKey: "dummy", authDomain: "dummy", projectId: "dummy", storageBucket: "dummy", messagingSenderId: "dummy", appId: "dummy" };
+        const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config.trim() !== '' && __firebase_config.trim() !== '{}'
+            ? JSON.parse(__firebase_config)
+            : DUMMY_FIREBASE_CONFIG;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         let app;
@@ -373,38 +377,41 @@
 
         // --- Firebase Initialization and Auth ---
 
-        if (firebaseConfig) {
-            try {
-                // setLogLevel('debug');
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                ordersCollectionRef = collection(db, `artifacts/${appId}/public/data/orders`);
-                
-                // Use session persistence for a better manager experience
-                setPersistence(auth, browserSessionPersistence).then(async () => {
-                    if (initialAuthToken) {
-                        // Manager Login
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        // Anonymous Fallback (for form users, or if token fails)
-                        await signInAnonymously(auth);
-                    }
-                }).catch(e => {
-                    console.error("Auth Persistence/Sign-in Error:", e);
-                });
+        try {
+            // setLogLevel('debug');
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            ordersCollectionRef = collection(db, `artifacts/${appId}/public/data/orders`);
+            
+            // Use session persistence for a better manager experience
+            setPersistence(auth, browserSessionPersistence).then(async () => {
+                if (initialAuthToken) {
+                    // Manager Login
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    // Anonymous Fallback (for form users, or if token fails)
+                    await signInAnonymously(auth);
+                }
+            }).catch(e => {
+                console.error("Auth Persistence/Sign-in Error:", e);
+            });
 
-                // Populate the State Dropdown immediately after the app initializes
-                populateStateDropdown();
-                
-            } catch (error) {
-                console.error("Firebase Initialization Error:", error);
-                loadingScreen.textContent = 'Error initializing application. Check console for details.';
+            // Populate the State Dropdown immediately after the app initializes
+            populateStateDropdown();
+
+            // Check if we are using the dummy config and display a warning
+            if (firebaseConfig === DUMMY_FIREBASE_CONFIG) {
+                console.warn('Using DUMMY Firebase config. Data persistence will not work.');
+                // Display a soft warning message instead of the hard error screen
+                loadingScreen.textContent = 'Warning: Using placeholder configuration. Data persistence may not work.';
             }
-        } else {
-            loadingScreen.textContent = 'Firebase configuration missing. Cannot run application.';
-            console.error("Firebase config is undefined.");
+
+        } catch (error) {
+            console.error("Firebase Initialization Error:", error);
+            loadingScreen.textContent = 'Error initializing application. Check console for details.';
         }
+
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -417,10 +424,13 @@
                 switchView('initial-review'); 
                 
                 // Start listening for orders once authenticated
-                if (db) {
+                if (db && firebaseConfig !== DUMMY_FIREBASE_CONFIG) {
                     listenForOrders();
                     populateStatusSelect(); // Populate the status dropdown for CSV export
+                } else if (firebaseConfig === DUMMY_FIREBASE_CONFIG) {
+                    authStatusP.textContent += ' (Offline Mode)';
                 }
+
             } else {
                 currentUserId = 'anonymous';
                 authStatusP.textContent = 'Anonymous session.';
@@ -482,6 +492,12 @@
         
         orderForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            // Check if we are using the dummy config
+            if (firebaseConfig === DUMMY_FIREBASE_CONFIG) {
+                showModal("Connection Error", "The database is not configured. Submission is disabled in offline mode.");
+                return;
+            }
+            
             if (!db) {
                 showModal("Error", "Database connection failed. Please try again later.");
                 return;
@@ -516,7 +532,8 @@
                 setTimeout(() => formMessage.classList.add('hidden'), 5000);
             } catch (error) {
                 console.error("Error submitting order: ", error);
-                formMessage.textContent = 'Failed to submit order. Please check your connection.';
+                showModal("Submission Failed", "There was an error submitting the order. Check the console for details.");
+                formMessage.textContent = 'Submission failed. Please try again.';
                 formMessage.classList.remove('hidden', 'text-green-600');
                 formMessage.classList.add('text-red-600');
             }
@@ -665,8 +682,8 @@
         // --- Dashboard Real-time Management ---
 
         function listenForOrders() {
-            if (!db || !ordersCollectionRef) {
-                console.error("Database or collection reference not ready.");
+            if (!db || !ordersCollectionRef || firebaseConfig === DUMMY_FIREBASE_CONFIG) {
+                console.error("Database or collection reference not ready or offline mode active.");
                 return;
             }
 
@@ -802,8 +819,16 @@
             // --- GEMINI FEATURE BUTTON ---
             const draftButton = document.createElement('button');
             draftButton.className = 'mt-3 w-full py-2 text-sm font-semibold rounded-lg text-white bg-pink-500 hover:bg-pink-600 transition duration-150 shadow-md';
-            draftButton.textContent = 'Draft Customer Message ✨';
-            draftButton.onclick = () => draftCustomerMessage(order);
+            // Disable Gemini feature if offline
+            if (firebaseConfig === DUMMY_FIREBASE_CONFIG) {
+                draftButton.textContent = 'Draft (Offline)';
+                draftButton.disabled = true;
+                draftButton.classList.remove('bg-pink-500', 'hover:bg-pink-600');
+                draftButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+            } else {
+                draftButton.textContent = 'Draft Customer Message ✨';
+                draftButton.onclick = () => draftCustomerMessage(order);
+            }
             card.appendChild(draftButton);
 
             // Status Change Button (Status Changer for each form/card) - Kept as a fallback/alternative
@@ -818,7 +843,14 @@
                 const button = document.createElement('button');
                 button.className = 'mt-2 w-full py-2 text-sm font-semibold rounded-lg text-white bg-indigo-500 hover:bg-indigo-600 transition duration-150 shadow-md';
                 button.textContent = `→ Move to ${nextLabel}`;
-                button.onclick = () => updateOrderStatus(order.id, nextStatus);
+                // Disable update button if offline
+                if (firebaseConfig === DUMMY_FIREBASE_CONFIG) {
+                    button.disabled = true;
+                    button.classList.remove('bg-indigo-500', 'hover:bg-indigo-600');
+                    button.classList.add('bg-gray-400', 'cursor-not-allowed');
+                } else {
+                    button.onclick = () => updateOrderStatus(order.id, nextStatus);
+                }
                 card.appendChild(button);
             } else {
                 const doneMessage = document.createElement('p');
@@ -831,6 +863,12 @@
         }
 
         async function updateOrderStatus(orderId, newStatus) {
+            // Check if we are using the dummy config
+            if (firebaseConfig === DUMMY_FIREBASE_CONFIG) {
+                showModal("Access Denied", "Status updates are disabled in offline mode.");
+                return;
+            }
+
             if (!db) {
                 showModal("Error", "Database connection not established.");
                 return;
