@@ -192,14 +192,45 @@
             "Puducherry (UT)"
         ];
 
-        // Firebase Globals (Provided by Canvas Environment)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // Fallback configuration if the environment variable is not injected (to prevent crash)
-        const DUMMY_FIREBASE_CONFIG = { apiKey: "dummy", authDomain: "dummy", projectId: "dummy", storageBucket: "dummy", messagingSenderId: "dummy", appId: "dummy" };
-        const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config.trim() !== '' && __firebase_config.trim() !== '{}'
-            ? JSON.parse(__firebase_config)
-            : DUMMY_FIREBASE_CONFIG;
+        // ====================================================================
+        // START: FIREBASE CONFIGURATION INJECTION
+        // --------------------------------------------------------------------
+        // IMPORTANT: The following configuration has been successfully injected 
+        // using the credentials you provided (Project: giftale).
+        
+        const userFirebaseConfig = {
+            apiKey: "AIzaSyDvOwo-7PfHNQZQyK9vZdQhDbs810-gOIc",
+            authDomain: "giftale.firebaseapp.com",
+            projectId: "giftale",
+            storageBucket: "giftale.firebasestorage.app",
+            messagingSenderId: "263266463361",
+            appId: "1:263266463361:web:12966b4b1cb7d97cfe2780"
+        };
+        
+        // ====================================================================
+        // END: FIREBASE CONFIGURATION INJECTION
+        // ====================================================================
+
+
+        // --- FIREBASE GLOBAL VARIABLES (DO NOT MODIFY BELOW THIS LINE) ---
+        // The app checks for environment injection first, then falls back to the hardcoded config.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : userFirebaseConfig.projectId;
+        
+        let firebaseConfig = userFirebaseConfig;
+        
+        // If the environment successfully injects a config, use it instead of the hardcoded one.
+        if (typeof __firebase_config !== 'undefined' && __firebase_config.trim() !== '' && __firebase_config.trim() !== '{}') {
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } catch (e) {
+                console.error("Error parsing injected Firebase config, using hardcoded fallback.");
+            }
+        }
+        
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // The check for DUMMY keys is no longer needed since we have real keys
+        const IS_OFFLINE_MODE = false;
 
         let app;
         let db;
@@ -207,17 +238,17 @@
         let currentUserId = null;
         let isAuthReady = false;
         let ordersCollectionRef;
-        let currentKanbanOrders = []; // To hold all orders currently displayed on the Kanban board (non-INITIAL_STATUS)
+        let currentKanbanOrders = []; 
 
         // --- STATUS CONSTANTS ---
-        const INITIAL_STATUS = 'FormFilled'; // Status for the new dedicated page
-        const KANBAN_STATUSES = ['Pending', 'ToDo', 'Processing', 'Dispatched']; // Statuses for the main Kanban board
+        const INITIAL_STATUS = 'FormFilled'; 
+        const KANBAN_STATUSES = ['Pending', 'ToDo', 'Processing', 'Dispatched'];
         
         const STATUS_COLORS = {
             [INITIAL_STATUS]: 'bg-red-100 text-red-800',
             'Pending': 'bg-yellow-100 text-yellow-800',
             'ToDo': 'bg-indigo-100 text-indigo-800',
-            'Processing': 'bg-blue-100 text-blue-800', // Used for 'Done'
+            'Processing': 'bg-blue-100 text-blue-800', 
             'Dispatched': 'bg-green-100 text-green-800',
         };
         
@@ -225,12 +256,12 @@
             [INITIAL_STATUS]: 'New Submission',
             'Pending': 'Pending',
             'ToDo': 'TO-DO',
-            'Processing': 'Done', // Label changed to Done for manager view
+            'Processing': 'Done', 
             'Dispatched': 'Shipped/Dispatched',
         };
         
         // --- Gemini API Configuration ---
-        const apiKey = ""; // Canvas will provide this key at runtime
+        const apiKey = ""; 
         const API_MODEL = 'gemini-2.5-flash-preview-09-2025';
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${API_MODEL}:generateContent?key=${apiKey}`;
 
@@ -238,7 +269,7 @@
         // DOM Elements
         const loadingScreen = document.getElementById('loading-screen');
         const formView = document.getElementById('form-view');
-        const initialReviewView = document.getElementById('initial-review-view'); // New View
+        const initialReviewView = document.getElementById('initial-review-view');
         const dashboardView = document.getElementById('dashboard-view');
         const orderForm = document.getElementById('order-form');
         const formMessage = document.getElementById('form-message');
@@ -247,8 +278,8 @@
         const initialEmptyMessage = document.getElementById('initial-empty-message');
         const authStatusP = document.getElementById('auth-status');
         const showFormBtn = document.getElementById('show-form-btn');
-        const showInitialReviewBtn = document.getElementById('show-initial-review-btn'); // New Button
-        const initialCountSpan = document.getElementById('initial-count'); // New Count Span
+        const showInitialReviewBtn = document.getElementById('show-initial-review-btn');
+        const initialCountSpan = document.getElementById('initial-count'); 
         const showDashboardBtn = document.getElementById('show-dashboard-btn');
         
         // --- Utility Functions ---
@@ -257,7 +288,7 @@
         function showModal(title, content, type = 'info') {
             const modal = document.getElementById('custom-modal');
             document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-content').innerHTML = `<p class="text-gray-600 mb-5">${content}</p>`; // Use innerHTML for simple text content
+            document.getElementById('modal-content').innerHTML = `<p class="text-gray-600 mb-5">${content}</p>`; 
             const confirmBtn = document.getElementById('modal-confirm-btn');
             const cancelBtn = document.getElementById('modal-cancel-btn');
 
@@ -292,7 +323,7 @@
                 const draftTextarea = document.getElementById('draft-output');
                 if (draftTextarea) {
                     draftTextarea.select();
-                    document.execCommand('copy'); // Use execCommand for iframe compatibility
+                    document.execCommand('copy'); 
                     document.getElementById('copy-status').classList.remove('hidden');
                 }
                 setTimeout(() => { modal.classList.add('hidden'); }, 500);
@@ -344,6 +375,12 @@
         }
 
         async function draftCustomerMessage(order) {
+            // Check for offline mode before proceeding
+            if (IS_OFFLINE_MODE) {
+                 showModal("Feature Disabled", "The AI drafting feature is disabled because the Firebase configuration is missing.");
+                return;
+            }
+
             // Show a temporary loading modal
             showModal("Generating Draft...", "The AI is crafting a message based on the order status. This may take a few seconds.");
 
@@ -377,39 +414,36 @@
 
         // --- Firebase Initialization and Auth ---
 
-        try {
-            // setLogLevel('debug');
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            ordersCollectionRef = collection(db, `artifacts/${appId}/public/data/orders`);
-            
-            // Use session persistence for a better manager experience
-            setPersistence(auth, browserSessionPersistence).then(async () => {
-                if (initialAuthToken) {
-                    // Manager Login
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    // Anonymous Fallback (for form users, or if token fails)
-                    await signInAnonymously(auth);
-                }
-            }).catch(e => {
-                console.error("Auth Persistence/Sign-in Error:", e);
-            });
+        // Display a message if offline mode is active
+        if (IS_OFFLINE_MODE) {
+            console.warn('Using DUMMY Firebase config. Data persistence will not work.');
+            loadingScreen.innerHTML = '<p class="text-lg text-red-600 font-semibold mb-4">Database Not Configured</p><p>Please replace the "YOUR_..." credentials in the code with your actual Firebase project configuration to enable saving and loading orders.</p>';
+        } else {
+            try {
+                // setLogLevel('debug');
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                ordersCollectionRef = collection(db, `artifacts/${appId}/public/data/orders`);
+                
+                // Use session persistence for a better manager experience
+                setPersistence(auth, browserSessionPersistence).then(async () => {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                }).catch(e => {
+                    console.error("Auth Persistence/Sign-in Error:", e);
+                });
 
-            // Populate the State Dropdown immediately after the app initializes
-            populateStateDropdown();
+                // Populate the State Dropdown immediately after the app initializes
+                populateStateDropdown();
 
-            // Check if we are using the dummy config and display a warning
-            if (firebaseConfig === DUMMY_FIREBASE_CONFIG) {
-                console.warn('Using DUMMY Firebase config. Data persistence will not work.');
-                // Display a soft warning message instead of the hard error screen
-                loadingScreen.textContent = 'Warning: Using placeholder configuration. Data persistence may not work.';
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+                loadingScreen.textContent = 'Error initializing application. Check console for details.';
             }
-
-        } catch (error) {
-            console.error("Firebase Initialization Error:", error);
-            loadingScreen.textContent = 'Error initializing application. Check console for details.';
         }
 
 
@@ -424,10 +458,10 @@
                 switchView('initial-review'); 
                 
                 // Start listening for orders once authenticated
-                if (db && firebaseConfig !== DUMMY_FIREBASE_CONFIG) {
+                if (db && !IS_OFFLINE_MODE) {
                     listenForOrders();
-                    populateStatusSelect(); // Populate the status dropdown for CSV export
-                } else if (firebaseConfig === DUMMY_FIREBASE_CONFIG) {
+                    populateStatusSelect(); 
+                } else if (IS_OFFLINE_MODE) {
                     authStatusP.textContent += ' (Offline Mode)';
                 }
 
@@ -492,14 +526,14 @@
         
         orderForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            // Check if we are using the dummy config
-            if (firebaseConfig === DUMMY_FIREBASE_CONFIG) {
-                showModal("Connection Error", "The database is not configured. Submission is disabled in offline mode.");
+            // Check if we are in offline mode
+            if (IS_OFFLINE_MODE) {
+                showModal("Connection Error", "The database is not configured. Submission is disabled.");
                 return;
             }
             
             if (!db) {
-                showModal("Error", "Database connection failed. Please try again later.");
+                showModal("Error", "Database connection failed. Please check the console.");
                 return;
             }
 
@@ -507,16 +541,14 @@
             const newOrder = {
                 customerName: document.getElementById('name').value,
                 phone: document.getElementById('phone').value,
-                // altPhone now captures combined phone and landmark info
                 altPhone: document.getElementById('altPhone').value, 
                 address: document.getElementById('address').value,
                 city: document.getElementById('city').value,
                 pincode: document.getElementById('pincode').value,
-                // STATE is now retrieved from the select dropdown
                 state: document.getElementById('state').value, 
                 orderDetails: document.getElementById('orderDetails').value,
                 comments: document.getElementById('comments').value,
-                status: INITIAL_STATUS, // Initial status
+                status: INITIAL_STATUS, 
                 createdAt: serverTimestamp(),
                 submittedByUserId: currentUserId,
             };
@@ -527,12 +559,11 @@
                 formMessage.classList.remove('hidden', 'text-red-600');
                 formMessage.classList.add('text-green-600');
                 orderForm.reset();
-                // Re-populate dropdown to reset the selected index visually
                 populateStateDropdown(); 
                 setTimeout(() => formMessage.classList.add('hidden'), 5000);
             } catch (error) {
                 console.error("Error submitting order: ", error);
-                showModal("Submission Failed", "There was an error submitting the order. Check the console for details.");
+                showModal("Submission Failed", "There was an error submitting the order. Check the console for details and ensure Firestore rules allow public write access.");
                 formMessage.textContent = 'Submission failed. Please try again.';
                 formMessage.classList.remove('hidden', 'text-green-600');
                 formMessage.classList.add('text-red-600');
@@ -541,13 +572,17 @@
 
         // --- Drag and Drop Handlers ---
         
-        // Stores the ID of the order card currently being dragged
         let draggedOrderId = null; 
 
         function handleDragStart(e, orderId) {
+            // Check for offline mode before allowing drag
+            if (IS_OFFLINE_MODE) {
+                e.preventDefault(); 
+                showModal("Feature Disabled", "Order status updates are disabled in offline mode.");
+                return;
+            }
             draggedOrderId = orderId;
             e.dataTransfer.setData('text/plain', orderId);
-            // Add a class to the card being dragged for visual feedback
             setTimeout(() => e.target.classList.add('opacity-50'), 0);
         }
         
@@ -557,9 +592,8 @@
         }
 
         function handleDragOver(e) {
-            e.preventDefault(); // Necessary to allow dropping
+            e.preventDefault(); 
             const target = e.currentTarget;
-            // Add visual cue when dragging over a droppable area
             if (target && target.classList.contains('status-column')) {
                  target.classList.add('border-4', 'border-dashed', 'border-indigo-400', 'bg-indigo-50');
             }
@@ -592,8 +626,8 @@
 
         const CSV_HEADERS = [
             "Order ID", "Status", "Customer Name", "Phone Number", 
-            "Shipping Address",                       // Index 4
-            "Alternative Phone number and land mark", // Index 5
+            "Shipping Address",                       
+            "Alternative Phone number and land mark", 
             "City", "State", "Pincode", 
             "Order Details / Items", "Comments / Notes", "Date Submitted"
         ];
@@ -610,6 +644,12 @@
         }
 
         window.downloadOrdersAsCSV = (statusFilter) => {
+            // Check for offline mode before downloading
+            if (IS_OFFLINE_MODE) {
+                showModal("Feature Disabled", "Order download is disabled in offline mode.");
+                return;
+            }
+            
             let ordersToExport = currentKanbanOrders;
 
             if (statusFilter && statusFilter !== 'All') {
@@ -630,8 +670,8 @@
                     STATUS_LABELS[order.status],
                     escapeCSV(order.customerName),
                     escapeCSV(order.phone),
-                    escapeCSV(order.address),        // Shipping Address (Index 4)
-                    escapeCSV(order.altPhone || ''), // Combined Alt Phone and Landmark (Index 5)
+                    escapeCSV(order.address),        
+                    escapeCSV(order.altPhone || ''), 
                     escapeCSV(order.city),
                     escapeCSV(order.state),
                     escapeCSV(order.pincode),
@@ -665,7 +705,6 @@
         function populateStatusSelect() {
             const statusSelect = document.getElementById('status-select');
             
-            // Clear existing options except 'All'
             while (statusSelect.options.length > 1) {
                 statusSelect.remove(1);
             }
@@ -682,8 +721,12 @@
         // --- Dashboard Real-time Management ---
 
         function listenForOrders() {
-            if (!db || !ordersCollectionRef || firebaseConfig === DUMMY_FIREBASE_CONFIG) {
-                console.error("Database or collection reference not ready or offline mode active.");
+            if (IS_OFFLINE_MODE) {
+                console.error("Cannot listen to orders. Offline mode active.");
+                return;
+            }
+            if (!db || !ordersCollectionRef) {
+                console.error("Database or collection reference not ready.");
                 return;
             }
 
@@ -695,17 +738,16 @@
                     orders.push({ id: doc.id, ...doc.data() });
                 });
                 
-                // Split orders into two groups
                 const initialOrders = orders.filter(o => o.status === INITIAL_STATUS);
                 const kanbanOrders = orders.filter(o => o.status !== INITIAL_STATUS);
                 
-                currentKanbanOrders = kanbanOrders; // Store for CSV export
+                currentKanbanOrders = kanbanOrders; 
                 
                 renderInitialReviewBoard(initialOrders);
                 renderKanbanBoard(kanbanOrders);
             }, (error) => {
                 console.error("Error listening to orders:", error);
-                showModal("Error", "Could not load real-time order data.");
+                showModal("Error", "Could not load real-time order data. Check Firestore Security Rules.");
             });
         }
         
@@ -723,7 +765,6 @@
 
                 orders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)).forEach(order => {
                     const orderCard = createOrderCard(order);
-                    // Use a slightly different styling for initial cards
                     orderCard.classList.remove('border-indigo-500');
                     orderCard.classList.add('border-red-500');
                     initialOrdersList.appendChild(orderCard);
@@ -756,12 +797,12 @@
                 // Column Body (Orders List)
                 const ordersList = document.createElement('div');
                 ordersList.id = `column-${status}`;
-                ordersList.className = 'space-y-4 status-column pr-2 min-h-[100px] transition duration-200'; // Added min-h for droppable area
+                ordersList.className = 'space-y-4 status-column pr-2 min-h-[100px] transition duration-200'; 
                 
                 // --- ADD DROP TARGET PROPERTIES ---
                 ordersList.setAttribute('data-status', status);
                 ordersList.ondragover = handleDragOver;
-                ordersList.ondragenter = (e) => e.preventDefault(); // allow drop
+                ordersList.ondragenter = (e) => e.preventDefault(); 
                 ordersList.ondragleave = handleDragLeave;
                 ordersList.ondrop = handleDrop;
                 
@@ -777,12 +818,16 @@
 
         function createOrderCard(order) {
             const card = document.createElement('div');
-            card.className = 'bg-gray-50 p-4 rounded-lg shadow-md border-t-4 border-indigo-500 hover:shadow-lg transition duration-200 cursor-grab';
+            // Disable drag if offline, otherwise enable
+            if (!IS_OFFLINE_MODE) {
+                card.setAttribute('draggable', 'true');
+                card.ondragstart = (e) => handleDragStart(e, order.id);
+                card.ondragend = handleDragEnd;
+                card.className = 'bg-gray-50 p-4 rounded-lg shadow-md border-t-4 border-indigo-500 hover:shadow-lg transition duration-200 cursor-grab';
+            } else {
+                card.className = 'bg-gray-100 p-4 rounded-lg shadow-inner border-t-4 border-gray-400 text-gray-500 cursor-default';
+            }
             
-            // --- ADD DRAGGABLE PROPERTIES ---
-            card.setAttribute('draggable', 'true');
-            card.ondragstart = (e) => handleDragStart(e, order.id);
-            card.ondragend = handleDragEnd;
             
             // Order ID (for manager reference)
             const idSpan = document.createElement('span');
@@ -800,7 +845,6 @@
             const details = document.createElement('p');
             details.className = 'text-sm text-gray-600 mt-1 whitespace-pre-wrap';
             
-            // Display order reflects the new visual structure (Address then Alt Phone/Landmark)
             let addressSummary = order.address;
             let altPhoneAndLandmark = order.altPhone || 'N/A';
             
@@ -819,9 +863,9 @@
             // --- GEMINI FEATURE BUTTON ---
             const draftButton = document.createElement('button');
             draftButton.className = 'mt-3 w-full py-2 text-sm font-semibold rounded-lg text-white bg-pink-500 hover:bg-pink-600 transition duration-150 shadow-md';
-            // Disable Gemini feature if offline
-            if (firebaseConfig === DUMMY_FIREBASE_CONFIG) {
-                draftButton.textContent = 'Draft (Offline)';
+            
+            if (IS_OFFLINE_MODE) {
+                draftButton.textContent = 'Draft (Disabled)';
                 draftButton.disabled = true;
                 draftButton.classList.remove('bg-pink-500', 'hover:bg-pink-600');
                 draftButton.classList.add('bg-gray-400', 'cursor-not-allowed');
@@ -831,7 +875,7 @@
             }
             card.appendChild(draftButton);
 
-            // Status Change Button (Status Changer for each form/card) - Kept as a fallback/alternative
+            // Status Change Button (Kept as a fallback/alternative)
             const allStatuses = [INITIAL_STATUS, ...KANBAN_STATUSES];
             const currentStatusIndex = allStatuses.indexOf(order.status);
             const nextStatusIndex = currentStatusIndex + 1;
@@ -843,8 +887,8 @@
                 const button = document.createElement('button');
                 button.className = 'mt-2 w-full py-2 text-sm font-semibold rounded-lg text-white bg-indigo-500 hover:bg-indigo-600 transition duration-150 shadow-md';
                 button.textContent = `→ Move to ${nextLabel}`;
-                // Disable update button if offline
-                if (firebaseConfig === DUMMY_FIREBASE_CONFIG) {
+                
+                if (IS_OFFLINE_MODE) {
                     button.disabled = true;
                     button.classList.remove('bg-indigo-500', 'hover:bg-indigo-600');
                     button.classList.add('bg-gray-400', 'cursor-not-allowed');
@@ -863,8 +907,7 @@
         }
 
         async function updateOrderStatus(orderId, newStatus) {
-            // Check if we are using the dummy config
-            if (firebaseConfig === DUMMY_FIREBASE_CONFIG) {
+            if (IS_OFFLINE_MODE) {
                 showModal("Access Denied", "Status updates are disabled in offline mode.");
                 return;
             }
@@ -885,7 +928,6 @@
                     status: newStatus,
                     updatedAt: serverTimestamp()
                 });
-                // The onSnapshot listener will automatically refresh the UI
                 console.log(`Order ${orderId} status updated to ${newStatus}`);
             } catch (error) {
                 console.error("Error updating document: ", error);
